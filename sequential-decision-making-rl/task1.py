@@ -1,0 +1,158 @@
+from gridworld import *
+
+class ValueIterationAgent:
+    def __init__(self, gridworld: Gridworld, discount_factor: float, iterations: int = 100):
+        self.gridworld = gridworld
+        self.discount_factor = discount_factor
+        self.iterations = iterations
+        self.values = {state: 0.0 for state in gridworld.states}
+
+    def calc_q_value(self, state: Gridworld.State, action: Gridworld.Action) -> float:
+        q_value = 0.0
+        transitions = self.gridworld.get_transitions(state, action)
+        for next_state, probability in transitions.items():
+            q_value += probability * (
+                self.gridworld.get_reward(state, action, next_state)
+                + self.discount_factor * self.values.get(next_state, 0.0)
+            )
+        return q_value
+
+    def iterate(self):
+        for _ in range(self.iterations):
+            new_values = {}
+            for state in self.gridworld.states:
+                actions = self.gridworld.get_actions(state)
+                if actions:
+                    new_values[state] = max(
+                        self.calc_q_value(state, action) for action in actions
+                    )
+                else:
+                    new_values[state] = 0.0
+            self.values = new_values
+
+    def getPolicy(self, state: Gridworld.State):
+        actions = self.gridworld.get_actions(state)
+        if not actions:
+            return None
+        return max(actions, key=lambda a: self.calc_q_value(state, a))
+
+    def getValue(self, state: Gridworld.State) -> float:
+        return self.values[state]
+
+class PolicyIterationAgent(ValueIterationAgent):
+    def __init__(self, gridworld: Gridworld, discount_factor: float, iterations: int = 100):
+        super().__init__(gridworld, discount_factor, iterations)
+        # Initial policy: always go Right
+        self.policy = {}
+        for state in gridworld.states:
+            actions = gridworld.get_actions(state)
+            self.policy[state] = Gridworld.Action.Right if actions else None
+
+    def _policy_evaluation(self):
+        for _ in range(self.iterations):
+            new_values = {}
+            for state in self.gridworld.states:
+                action = self.policy[state]
+                if action is None:
+                    new_values[state] = self.values[state]
+                else:
+                    new_values[state] = self.calc_q_value(state, action)
+            self.values = new_values
+
+    def _policy_improvement(self) -> bool:
+        policy_changed = False
+        for state in self.gridworld.states:
+            actions = self.gridworld.get_actions(state)
+            if not actions:
+                continue
+            best_action = max(actions, key=lambda a: self.calc_q_value(state, a))
+            if best_action != self.policy[state]:
+                self.policy[state] = best_action
+                policy_changed = True
+        return policy_changed
+
+    def iterate(self):
+        while True:
+            self._policy_evaluation()
+            changed = self._policy_improvement()
+            if not changed:
+                break
+
+    def getPolicy(self, state: Gridworld.State):
+        actions = self.gridworld.get_actions(state)
+        if not actions:
+            return None
+        return self.policy[state]
+
+    def getValue(self, state: Gridworld.State) -> float:
+        return self.values[state]
+
+
+
+def print_value_function(agent: ValueIterationAgent, grid: tuple, label: str):
+    n, m = len(grid), len(grid[0])
+    print(f"\n{'='*55}")
+    print(f"  Value Function — {label}")
+    print(f"{'='*55}")
+    for x in range(n):
+        row = ""
+        for y in range(m):
+            cell = grid[x][y]
+            if cell == '#':
+                row += "  ##### "
+            elif isinstance(cell, float):
+                row += f" [{cell:+5.1f}]"
+            else:
+                row += f"  {agent.getValue((x, y)):+5.3f}"
+        print(row)
+
+
+def print_policy(agent: ValueIterationAgent, grid: tuple, label: str):
+    symbols = {
+        Gridworld.Action.Up:    "↑",
+        Gridworld.Action.Down:  "↓",
+        Gridworld.Action.Left:  "←",
+        Gridworld.Action.Right: "→",
+        None:                   "X",
+    }
+    n, m = len(grid), len(grid[0])
+    print(f"\n{'='*55}")
+    print(f"  Policy — {label}")
+    print(f"{'='*55}")
+    for x in range(n):
+        row = ""
+        for y in range(m):
+            cell = grid[x][y]
+            if cell == '#':
+                row += "  # "
+            elif isinstance(cell, float):
+                row += "  X "
+            else:
+                a = agent.getPolicy((x, y))
+                row += f"  {symbols[a]} "
+        print(row)
+
+
+
+def main():
+    grid = (
+        (' ', ' ', ' ', ' ', 10.),
+        (' ', ' ', ' ', ' ', ' '),
+        (' ', '#', ' ', '#', ' ',),
+        (' ', ' ', ' ', ' ', ' '),
+        ('S', ' ', ' ', ' ', ' '),
+    )
+    game = Gridworld(noise=0.2, living_reward=-0.1, grid=grid)
+
+    vi = ValueIterationAgent(game, discount_factor=0.9, iterations=100)
+    vi.iterate()
+    print_value_function(vi, grid, "Value Iteration")
+    print_policy(vi, grid, "Value Iteration")
+
+    pi = PolicyIterationAgent(game, discount_factor=0.9, iterations=100)
+    pi.iterate()
+    print_value_function(pi, grid, "Policy Iteration")
+    print_policy(pi, grid, "Policy Iteration")
+
+if __name__ == '__main__':
+    main()
