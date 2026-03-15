@@ -35,7 +35,7 @@ TASKS = {
     "5": {
         "name": "Part 2 Task 2",
         "directory": PART2_DIR,
-        "script": None,
+        "script": "task2.py",
         "desc": "Future implementation for Task 2."
     },
     "6": {
