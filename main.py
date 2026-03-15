@@ -29,7 +29,7 @@ TASKS = {
     "4": {
         "name": "Part 2 Task 1",
         "directory": PART2_DIR,
-        "script": "task12.py",
+        "script": "task1.py",
         "desc": "Value/policy iteration variant using GridWorld."
     },
     "5": {
@@ -41,7 +41,7 @@ TASKS = {
     "6": {
         "name": "Part 2 Task 3",
         "directory": PART2_DIR,
-        "script": "task32.py",
+        "script": "task3.py",
         "desc": "Q-learning variant using GridWorld."
     },
 }

@@ -17,7 +17,7 @@ class Gridworld:
         self.__m = len(grid[0])
         self.__grid = grid
         self.__states = {(x, y) for x in range(self.__n) for y in range(self.__m) if
-                         grid[x][y] in (' ', 'S')}
+                         grid[self.__n - 1 -x][y] in (' ', 'S')}
 
     @property
     def states(self) -> Set[State]:
@@ -27,24 +27,28 @@ class Gridworld:
         x, y = state
         if x < 0 or x >= self.__n or y < 0 or y >= self.__m:
             raise ValueError('Not a valid state')
-        if isinstance(self.__grid[state[0]][state[1]], float):  # Return no actions if terminal state
+        if isinstance(self._grid_value(state), float):  # Return no actions if terminal state
             return set()
         return {*Gridworld.Action}
+    
+    def _grid_value(self, state: State):
+        x, y = state
+        return self.__grid[self.__n - 1 - x][y]
 
     def _do_action(self, state: State, action: Action) -> State: # Returns the new state
         x, y = state
 
         if action == Gridworld.Action.Up:
-            target_x, target_y = x - 1, y
-        elif action == Gridworld.Action.Down:
             target_x, target_y = x + 1, y
+        elif action == Gridworld.Action.Down:
+            target_x, target_y = x - 1, y
         elif action == Gridworld.Action.Left:
             target_x, target_y = x, y - 1
         else:
             target_x, target_y = x, y + 1
 
         if target_x < 0 or target_x >= self.__n or target_y < 0 or target_y >= self.__m or \
-                self.__grid[target_x][target_y] == '#':
+                self.__grid[self.__n - 1 - target_x][target_y] == '#':
             return state
         return target_x, target_y
 
@@ -77,5 +81,5 @@ class Gridworld:
     def get_reward(self, current_state: State, action: Action, next_state: State) -> float:
         if next_state not in self.get_transitions(current_state, action):
             raise ValueError('next state is not reachable from current state')
-        grid_value = self.__grid[next_state[0]][next_state[1]]
+        grid_value = self._grid_value(next_state)
         return grid_value if isinstance(grid_value, float) else self.__living_reward

@@ -99,17 +99,20 @@ def print_value_function(agent, grid, label):
     print(f"\n{'='*55}")
     print(f"  Value Function — {label}")
     print(f"{'='*55}")
-    for x in range(n):
+    for row_idx in range(n):
         row = ""
-        for y in range(m):
-            cell = grid[x][y]
+        for col_idx in range(m):
+            x = n - 1 - row_idx
+            y = col_idx
+            
+            cell = grid[row_idx][col_idx]
             if cell == '#':
                 row += "  XXXX "
             elif isinstance(cell, float):
                 row += "  GOAL "
             else:
                 row += f" {agent.getValue((x, y)):+6.2f}"
-        print(f"  |{row}|")
+        print(f"  {row}")
 
 
 def print_policy(agent: ValueIterationAgent, grid: tuple, label: str):
@@ -124,14 +127,13 @@ def print_policy(agent: ValueIterationAgent, grid: tuple, label: str):
     print(f"\n{'='*55}")
     print(f"  Policy — {label}")
     print(f"{'='*55}")
-    for x in range(n):
+    for row_idx in range(n):
         row = ""
-        for y in range(m):
-            cell = grid[x][y]
-            if cell == '#':
-                row += "  # "
-            elif isinstance(cell, float):
-                row += "  X "
+        for col_idx in range(m):
+            x, y = n - 1 - row_idx, col_idx # Map row/col to x/y
+            cell = grid[row_idx][col_idx]
+            if cell == '#': row += "  # "
+            elif isinstance(cell, float): row += "  G "
             else:
                 a = agent.getPolicy((x, y))
                 row += f"  {symbols[a]} "
