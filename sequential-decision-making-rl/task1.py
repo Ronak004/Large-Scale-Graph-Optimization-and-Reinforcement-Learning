@@ -1,3 +1,5 @@
+import time
+
 from gridworld import *
 
 class ValueIterationAgent:
@@ -5,6 +7,8 @@ class ValueIterationAgent:
         self.gridworld = gridworld
         self.discount_factor = discount_factor
         self.values = {state: 0.0 for state in gridworld.states}
+        self.iterations = 0 
+        self.runtime = 0.0
 
     def calc_q_value(self, state: Gridworld.State, action: Gridworld.Action) -> float:
         q_value = 0.0
@@ -17,7 +21,9 @@ class ValueIterationAgent:
         return q_value
 
     def iterate(self):
+        start_time = time.time()
         while True:
+            self.iterations += 1
             new_values = {}
             delta = 0.0
             for state in self.gridworld.states:
@@ -32,6 +38,8 @@ class ValueIterationAgent:
             self.values = new_values
             if delta < 1e-6:
                 break
+
+        self.runtime = time.time() - start_time
 
     def getPolicy(self, state: Gridworld.State):
         actions = self.gridworld.get_actions(state)
@@ -79,11 +87,14 @@ class PolicyIterationAgent(ValueIterationAgent):
         return policy_changed
 
     def iterate(self):
+        start_time = time.time()
         while True:
+            self.iterations += 1
             self._policy_evaluation()
             changed = self._policy_improvement()
             if not changed:
                 break
+        self.runtime = time.time() - start_time
 
     def getPolicy(self, state: Gridworld.State):
         actions = self.gridworld.get_actions(state)
@@ -94,50 +105,44 @@ class PolicyIterationAgent(ValueIterationAgent):
     def getValue(self, state: Gridworld.State) -> float:
         return self.values[state]
 
-def print_value_function(agent, grid, label):
+def print_grid_with_axes(agent, grid, label, mode="value"):
     n, m = len(grid), len(grid[0])
-    print(f"\n{'='*55}")
-    print(f"  Value Function — {label}")
-    print(f"{'='*55}")
-    for row_idx in range(n):
-        row = ""
-        for col_idx in range(m):
-            x = n - 1 - row_idx
-            y = col_idx
-            
-            cell = grid[row_idx][col_idx]
-            if cell == '#':
-                row += "  XXXX "
-            elif isinstance(cell, float):
-                row += "  GOAL "
-            else:
-                row += f" {agent.getValue((x, y)):+6.2f}"
-        print(f"  {row}")
-
-
-def print_policy(agent: ValueIterationAgent, grid: tuple, label: str):
     symbols = {
-        Gridworld.Action.Up:    "↑",
-        Gridworld.Action.Down:  "↓",
-        Gridworld.Action.Left:  "←",
+        Gridworld.Action.Up: "↑",
+        Gridworld.Action.Down: "↓",
+        Gridworld.Action.Left: "←",
         Gridworld.Action.Right: "→",
-        None:                   "X",
+        None: "X",
     }
-    n, m = len(grid), len(grid[0])
-    print(f"\n{'='*55}")
-    print(f"  Policy — {label}")
-    print(f"{'='*55}")
+    
+    title = "Value Function" if mode == "value" else "Policy"
+    print(f"\n{'='*65}")
+    print(f" {title} — {label}")
+    print(f"{'='*65}")
+    
+    header_offset = "        " 
+    header = header_offset + "".join([f"y={i:<6}" for i in range(m)])
+    print(header)
+    print("   " + "-" * (len(header) - 3))
+
     for row_idx in range(n):
-        row = ""
-        for col_idx in range(m):
-            x, y = n - 1 - row_idx, col_idx # Map row/col to x/y
-            cell = grid[row_idx][col_idx]
-            if cell == '#': row += "  # "
-            elif isinstance(cell, float): row += "  G "
+        x = n - 1 - row_idx
+        row_str = f"x={x:<2} |   "
+        
+        for y in range(m):
+            cell = grid[row_idx][y]
+            if cell == '#':
+                display = "XXXXXX  " if mode == "value" else "#       "
+            elif isinstance(cell, float):
+                display = " GOAL   " if mode == "value" else "G     "
             else:
-                a = agent.getPolicy((x, y))
-                row += f"  {symbols[a]} "
-        print(row)
+                if mode == "value":
+                    display = f"{agent.getValue((x, y)):+6.2f}  "
+                else:
+                    display = f"{symbols[a]:<8}" if (a := agent.getPolicy((x, y))) else "X       "
+            
+            row_str += display
+        print(row_str)
 
 
 
@@ -153,13 +158,20 @@ def main():
 
     vi = ValueIterationAgent(game, discount_factor=0.9)
     vi.iterate()
-    print_value_function(vi, grid, "Value Iteration")
-    print_policy(vi, grid, "Value Iteration")
+    print_grid_with_axes(vi, grid, "Value Iteration", mode="value")
+    print_grid_with_axes(vi, grid, "Value Iteration", mode="policy")
 
     pi = PolicyIterationAgent(game, discount_factor=0.9)
     pi.iterate()
-    print_value_function(pi, grid, "Policy Iteration")
-    print_policy(pi, grid, "Policy Iteration")
+    print_grid_with_axes(pi, grid, "Policy Iteration", mode="value")
+    print_grid_with_axes(pi, grid, "Policy Iteration", mode="policy")
+
+    print(f"\n{'='*65}")
+    print(f"{'Algorithm':<20} {'Episodes':<12} {'Conv. Iteration':<18} {'Time (s)':<10}")
+    print("-" * 65)
+    print(f"{'Value Iteration':<20} {'N/A':<12} {vi.iterations:<18} {vi.runtime:.5f}")
+    print(f"{'Policy Iteration':<20} {'N/A':<12} {pi.iterations:<18} {pi.runtime:.5f}")
+    print(f"{'='*65}")
 
 if __name__ == '__main__':
     main()

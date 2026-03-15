@@ -3,6 +3,7 @@ import numpy as np
 from enum import Enum, auto
 from typing import *
 from gridworld import *
+import time
 
 class QLearningAgent:
     def __init__(self, gridworld: Gridworld, alpha: float = 0.1, epsilon: float = 0.1, 
@@ -12,6 +13,8 @@ class QLearningAgent:
         self.epsilon = epsilon  
         self.gamma = gamma 
         self.episodes = episodes
+        self.runtime = 0.0
+        self.conv_episode = episodes
         
         # Initialize Q-table using the states set provided by Gridworld
         self.q_values = {}
@@ -35,43 +38,56 @@ class QLearningAgent:
             return random.choice(actions)
         else:
             max_val = self.get_max_q(state)
-            best_actions = [a for a, v in self.q_values[state].items() if v == max_val]
-            return random.choice(best_actions)
+            best_actions = [a for a, v in self.q_values[state].items() if abs(v - max_val) < 1e-9]
+            
+            best_actions.sort(key=lambda x: str(x))
+            return best_actions[0]
 
     def train(self):
-        start_state = (0, 0) 
+        start_time = time.time()
+        prev_policy = {} 
+        stable_count = 0
         
-        for _ in range(self.episodes):
-            state = start_state
+        for ep in range(1, self.episodes + 1):
+            state = (0, 0) 
             while True:
                 actions = self.gridworld.get_actions(state)
-                if not actions: # Terminal state reached
-                    break
+                if not actions: break
                 
                 action = self.choose_action(state)
-                
-                # Sample next state based on environment transitions
                 transitions = self.gridworld.get_transitions(state, action)
-                next_states = list(transitions.keys())
-                probs = list(transitions.values())
-                next_state = random.choices(next_states, weights=probs, k=1)[0]
-                
+                next_state = random.choices(list(transitions.keys()), weights=list(transitions.values()), k=1)[0]
                 reward = self.gridworld.get_reward(state, action, next_state) 
                 
-                # Q-Learning update rule
                 old_q = self.q_values[state][action]
                 next_max = self.get_max_q(next_state)
-                self.q_values[state][action] = old_q + self.alpha * (
-                    reward + self.gamma * next_max - old_q
-                )
+                self.q_values[state][action] = old_q + self.alpha * (reward + self.gamma * next_max - old_q)
                 state = next_state
+
+            # Get current greedy policy for all states
+            current_policy = {s: self.getPolicy(s) for s in self.gridworld.states if self.gridworld.get_actions(s)}
+            
+            if current_policy == prev_policy:
+                stable_count += 1
+            else:
+                stable_count = 0
+                
+            prev_policy = current_policy
+
+            # If policy is stable for 300 episodes 
+            if stable_count >= 300 and self.conv_episode == self.episodes:
+                self.conv_episode = ep - 300
+
+        self.runtime = time.time() - start_time
 
     def getPolicy(self, state: Gridworld.State):
         actions = self.gridworld.get_actions(state)
         if not actions: return None
         max_val = self.get_max_q(state)
-        best_actions = [a for a, v in self.q_values[state].items() if v == max_val]
-        return random.choice(best_actions)
+        best_actions = [a for a, v in self.q_values[state].items() if abs(v - max_val) < 1e-9]
+        
+        best_actions.sort(key=lambda x: str(x)) 
+        return best_actions[0]
 
     def getValue(self, state: Gridworld.State) -> float:
         actions = self.gridworld.get_actions(state)
@@ -82,47 +98,44 @@ class QLearningAgent:
         return self.get_max_q(state)
 
 # --- Output Formatting ---
-def print_value_function(agent: QLearningAgent, grid: tuple, label: str):
+def print_grid_with_axes(agent, grid, label, mode="value"):
     n, m = len(grid), len(grid[0])
-    print(f"\n{'='*55}")
-    print(f"Value Function — {label}")
-    print(f"{'='*55}")
-    for r in range(n):
-        row = ""
-        for c in range(m):
-            x, y = n - 1 - r, c
-            cell = grid[r][c]
-            if cell == '#':
-                row += "  #####  "
-            elif isinstance(cell, float):
-                row += f"   GOAL "
-            else:
-                row += f" {agent.getValue((x, y)):+7.2f} "
-        print(row)
-
-def print_policy(agent: QLearningAgent, grid: tuple, label: str):
     symbols = {
-        Gridworld.Action.Up: "↑", Gridworld.Action.Down: "↓",
-        Gridworld.Action.Left: "←", Gridworld.Action.Right: "→",
+        Gridworld.Action.Up: "↑",
+        Gridworld.Action.Down: "↓",
+        Gridworld.Action.Left: "←",
+        Gridworld.Action.Right: "→",
         None: "X",
     }
-    n, m = len(grid), len(grid[0])
-    print(f"\n{'='*55}")
-    print(f"Policy — {label}")
-    print(f"{'='*55}")
-    for r in range(n):
-        row = ""
-        for c in range(m):
-            x, y = n - 1 - r, c
-            cell = grid[r][c]
+    
+    title = "Value Function" if mode == "value" else "Policy"
+    print(f"\n{'='*65}")
+    print(f" {title} — {label}")
+    print(f"{'='*65}")
+    
+    header_offset = "        " 
+    header = header_offset + "".join([f"y={i:<6}" for i in range(m)])
+    print(header)
+    print("   " + "-" * (len(header) - 3))
+
+    for row_idx in range(n):
+        x = n - 1 - row_idx
+        row_str = f"x={x:<2} |   "
+        
+        for y in range(m):
+            cell = grid[row_idx][y]
             if cell == '#':
-                row += "  # "
+                display = "XXXXXX  " if mode == "value" else "#       "
             elif isinstance(cell, float):
-                row += "  G "
+                display = " GOAL   " if mode == "value" else "G     "
             else:
-                a = agent.getPolicy((x, y))
-                row += f"  {symbols[a]} "
-        print(row)
+                if mode == "value":
+                    display = f"{agent.getValue((x, y)):+6.2f}  "
+                else:
+                    display = f"{symbols[a]:<8}" if (a := agent.getPolicy((x, y))) else "X       "
+            
+            row_str += display
+        print(row_str)
 
 def main():
 
@@ -139,8 +152,14 @@ def main():
     print("Training Q-Learning Agent...")
     ql.train()
     
-    print_value_function(ql, grid, "Q-Learning")
-    print_policy(ql, grid, "Q-Learning")
+    print_grid_with_axes(ql, grid, "Q-Learning", mode="value")
+    print_grid_with_axes(ql, grid, "Q-Learning", mode="policy")
+
+    print(f"\n{'='*70}")
+    print(f"{'Algorithm':<20} | {'Total Episodes':<15} | {'Conv. Episode':<15} | {'Time (s)'}")
+    print("-" * 70)
+    print(f"{'Q-Learning':<20} | {ql.episodes:<15} | {ql.conv_episode:<15} | {ql.runtime:.4f}")
+    print(f"{'='*70}")
 
 if __name__ == '__main__':
     main()
