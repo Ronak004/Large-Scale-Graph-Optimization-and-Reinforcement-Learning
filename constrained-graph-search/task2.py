@@ -20,11 +20,11 @@ class PriorityQueue:
         (priority, item) = heapq.heappop(self.heap)
         return priority, item
 
-    def isEmpty(self):
+    def is_empty(self):
         return len(self.heap) == 0
 
 # Implementation of Uniform Cost Search, taking into consideration the energy budget
-def uniformCostSearch(graph, start, goal, energy_budget):
+def uniform_cost_search(graph, start, goal, energy_budget):
     # Initialize the priority queue with the starting node
     priority_queue = PriorityQueue()
     priority_queue.push(0, (start, 0, None))
@@ -33,7 +33,7 @@ def uniformCostSearch(graph, start, goal, energy_budget):
     # Nodes are added when first discovered, and updated if a shorter path is found using the node
     visited = {start: (0, 0, None)}
 
-    while not priority_queue.isEmpty():
+    while not priority_queue.is_empty():
         # Pop the node with the lowest accumulated distance from the priority queue
         accumulated_distance, (node, accumulated_energy, parent) = priority_queue.pop()
 
@@ -72,7 +72,7 @@ def reconstruct_path(visited, goal_node):
 
 
 if __name__ == "__main__":
-    result = uniformCostSearch(g, "1", "50", 287932)
+    result = uniform_cost_search(g, "1", "50", 287932)
     if result:
         path, total_dist, total_energy = result
         print(f"Shortest path: {'->'.join(path)}.")
