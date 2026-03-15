@@ -23,8 +23,8 @@ TASKS = {
     "3": {
         "name": "Part 1 Task 3",
         "directory": PART1_DIR,
-        "script": None, 
-        "desc": "Future implementation for Task 3."
+        "script": "task3.py",
+        "desc": "A* search with energy budget."
     },
     "4": {
         "name": "Part 2 Task 1",
