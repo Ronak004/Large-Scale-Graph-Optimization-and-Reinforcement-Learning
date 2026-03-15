@@ -112,7 +112,7 @@ def print_value_function(agent, grid, label):
                 row += "  GOAL "
             else:
                 row += f" {agent.getValue((x, y)):+6.2f}"
-        print(f"  |{row}|")
+        print(f"  {row}")
 
 
 def print_policy(agent: ValueIterationAgent, grid: tuple, label: str):

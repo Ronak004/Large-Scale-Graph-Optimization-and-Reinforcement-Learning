@@ -88,16 +88,16 @@ def print_value_function(agent: QLearningAgent, grid: tuple, label: str):
     print(f"Value Function — {label}")
     print(f"{'='*55}")
     for r in range(n):
-        row = "|"
+        row = ""
         for c in range(m):
             x, y = n - 1 - r, c
             cell = grid[r][c]
             if cell == '#':
-                row += "  #####  |"
+                row += "  #####  "
             elif isinstance(cell, float):
-                row += f" [{cell:+5.1f}] |"
+                row += f"   GOAL "
             else:
-                row += f" {agent.getValue((x, y)):+7.2f} |"
+                row += f" {agent.getValue((x, y)):+7.2f} "
         print(row)
 
 def print_policy(agent: QLearningAgent, grid: tuple, label: str):
